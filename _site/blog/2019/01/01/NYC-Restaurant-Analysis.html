@@ -1,0 +1,271 @@
+<h1 id="analyzing-new-york-city-restaurants-sanitary-inspections">Analyzing New York City Restaurants’ Sanitary Inspections</h1>
+
+<h3 id="abstract">Abstract</h3>
+
+<p>Using New York City’s DOH data and Yelp API, we attempt to predict a restaurant’s health grade. As most websites do not provide free access to written reviews, we focus on objective facts around the businesses such as the average rating, the number of reviews, the hours of operations, etc.</p>
+
+<p>Our analysis shows that most variables are uncorrelated with a restaurant’s sanitary conditions. However, the chain size and the number of recent inspections seem to play an important role in predicting a restaurant’s health grade.</p>
+
+<p>Using a Random Forest, we are able to significantly better predict a restaurant’s health grade. The model could be used by the city to customize its inspection schedule and improve its ROI.</p>
+
+<p>We conclude by suggesting policy improvements and future areas of research to further the analysis.</p>
+
+<ol>
+  <li><a href="#part1">Constructing and Manipulating the Dataset</a></li>
+  <li><a href="#part2">Visualizing the Dataset and Attempting to Predict a Restaurant’s Health Grade</a></li>
+  <li><a href="#part3">Guiding Policy and Future Analysis</a></li>
+</ol>
+
+<h2 id="creating-our-dataset-">Creating our Dataset <a name="part1"></a></h2>
+
+<h3 id="an-easy-to-access-dataset">An Easy to Access Dataset</h3>
+
+<p>Sanitary inspection records are available on <strong>New York City’s open data initiative</strong> (https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j) and we pull the most historical records using the API available.</p>
+
+<h3 id="matching-the-restaurants-with-yelps-information">Matching the Restaurants with Yelp’s Information</h3>
+
+<p>In “DOH and Yelp Scraping.ipynb”, we leverage the <strong>Yelp API</strong> huge dataset to match the various restaurants with Yelp’s various informations (hours of operation, review count, average rating,etc.)</p>
+
+<p><em>Note - Yelp limits access to it’s API to 5,000 requests/day.</em></p>
+
+<h3 id="verifying-the-accuracy-of-the-yelp-data">Verifying the Accuracy of the Yelp Data</h3>
+
+<p>We use Seatgeek’s very own <strong>Fuzzywuzzy</strong> (https://github.com/seatgeek/fuzzywuzzy) to verify that the Yelp businesses matched accurately with the Sanitary inspection data.</p>
+
+<h3 id="accounting-for-the-frequency-of-inspections-and-keeping-a-single-record-per-restaurant">Accounting for the Frequency of Inspections and Keeping a Single Record per Restaurant</h3>
+
+<p>Inspections are a lot more frequent for restaurants that have had lower initial scores. Hence, the frequency of inspection gives an indication of a restaurant’s health score record.</p>
+
+<p>To account for such a record, we look at the number of inspections a restaurant has had in the past 15 months.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://2.bp.blogspot.com/-U3VR9ypH5tA/XCVaUKSgz4I/AAAAAAAAld8/Dft_vBOI_CoeQmnvBeKSkxj0rId346K3ACLcBGAs/s320/inspection%2Bcycle.PNG" alt="Timeline of an Inspection Cycle" /></span></p>
+
+<p><em>Graph as per the DOH official documentation available at (https://www1.nyc.gov/assets/doh/downloads/pdf/rii/inspection-cycle-overview.pdf)</em>&lt;/span&gt;</p>
+
+<p>Given that we already account for a restaurant’s inspection record and that we are interested by their current grade, we also only keep the restaurant’s latest inspection score for the purpose of our analysis.</p>
+
+<h3 id="accounting-for-chains">Accounting for Chains</h3>
+
+<p>We postulate as well that chains may have standardized processes and more stringent sanitary regulations which could have a positive impact on their grades. For simplicity, we count the number of restaurants with the same names and aggregate the number in a variable.</p>
+
+<h3 id="is-the-business-primarily-serving-food">Is the Business Primarily Serving Food?</h3>
+
+<p>We also hypothesize that restaurants that focus on the preparation of food may be more likely to have unsanitary conditions compared to other types of shops (donuts, coffee shops, etc.). We create a new variable to account for whether the restaurant prepares food and aggregate the different cuisine types into it.</p>
+
+<h3 id="handling-the-hours-of-operations">Handling the Hours of Operations</h3>
+
+<p>The way a restaurant remains open may give information about the sanitary conditions of a business (overnight restaurants may be less sanitary as they “never close”, restaurants that close between lunch and dinner may clean more, restaurants that do not disclose their hours of operations on Yelp may be run with less attention to details, etc.).</p>
+
+<p>We thus aggregate the result of our parsing into 5 different categories:</p>
+<ol>
+  <li>Open Overnight (“overnight”)</li>
+  <li>Closes between Lunch and Dinner (“Closes for Lunch”)</li>
+  <li>Open for Long Hours (“Long Hours”)</li>
+  <li>Open for Short Hours (“Short Hours”)</li>
+  <li>Data not available - not the usual format or not disclosed on Yelp (“N/A”)</li>
+</ol>
+
+<p><strong>After cleaning the dataset, we study ~17,000 restaurants</strong></p>
+
+<h2 id="visualizing-the-data-and-creating-a-model-">Visualizing the Data and Creating a Model <a name="part2"></a></h2>
+
+<h3 id="geographical-location-is-for-the-most-part-irrelevant">Geographical Location is For the Most Part Irrelevant</h3>
+<p><span style="display:block;text-align:center"><img src="https://3.bp.blogspot.com/-jmUrpE6DCA0/XCYNX0n-cdI/AAAAAAAAlfk/ZgNmbYkCk7kxDR_XHwwGbxanh2FjmikaQCLcBGAs/s320/By%2BBorough.png" alt="Proportion of Restaurants Graded A by Borough" /></span></p>
+
+<p>The geographic area does not seem to indicate too much with respect to the sanitary conditions of Restaurants’ within a certain area.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-jPyG79mBr-E/XCYmPM6AHZI/AAAAAAAAlgc/aT5Drif0U4siAZ2M9n2yIkiCQUaPm0OlACLcBGAs/s320/Restaurants%2BGraded%2BA%2Bby%2BNeighborhood.png" alt="Proportion of Restaurants Graded A by Neighborhood" /></span></p>
+
+<p>While most neighborhoods have generally the same sanitary conditions, we note slight differences depending on the neighborhoods.</p>
+
+<p><strong>A chloropleth map is also available under “proportion_map.html”</strong></p>
+
+<h3 id="an-increasing-number-of-violations-within-a-growing-dataset">An Increasing Number of Violations within a growing Dataset</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-68Fd-cpVNvU/XCYCAWLFpnI/AAAAAAAAles/it_aMNerlSgjq88JLTEQRbHeQu_HjhKmwCLcBGAs/s320/Violations%2Bby%2BYear.png" alt="Violations Overtime" /></span></p>
+
+<p>The number of violations recorded has increased dramatically since 2014 and the inception of the dataset.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://2.bp.blogspot.com/-OxiNKoN1-LY/XCX_Lr_UVoI/AAAAAAAAleM/hUGjX_Eh4rc4kuWVK1rnPB_ulpjo8sh3QCLcBGAs/s320/JoyPlot%2BBy%2BYear.png" alt="JoyPlot by Year" /></span></p>
+
+<p>However, the distribution of inspection scores has remained globally the same since 2014 with the median remaining stable at 14.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://1.bp.blogspot.com/-p2zq79YbSjs/XCYCZzz9URI/AAAAAAAAle0/ldyynvkcYQ4UL4S9B911xUonheqo5DxHACLcBGAs/s1600/Violations%2Bby%2BMonth.png" alt="JoyPlot by Year" /></span></p>
+
+<p>Looking at seasonality effect, we also seem to find a much lower amount of violations in the winter months.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://3.bp.blogspot.com/-k-xQfEZwE_4/XCYCaU7cZoI/AAAAAAAAle4/d2V6eh-U8b8fbTEnalBd5tj8BSf4qmYBwCLcBGAs/s320/Score%2Bby%2BMonth.png" alt="JoyPlot by Year" /></span></p>
+
+<p>However, distributions intra-months are very similar as well. It does not seem to reveal much about a seasonal difference in restaurants’ sanitary conditions but rather the fact that inspections may be less frequent.</p>
+
+<h3 id="the-type-of-business-highlights-relevant-sanitary-differences">The Type of Business Highlights Relevant Sanitary Differences</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-UZNJyomqcyY/XCYDRhxouaI/AAAAAAAAlfM/ojBwLAIpQoILDwijqCFTW20O-z6wYLhEQCLcBGAs/s320/Food%2Bvs%2Bno%2BFood.png" alt="Is it food?" /></span></p>
+
+<p>Whether a restaurant serves food or not seems to be a relevant differentiation factor in determining a business’ sanitary conditions.</p>
+
+<p><span style="display:block;text-align:center"><img src="https://3.bp.blogspot.com/-6MVHXQKhCPk/XCYDRg_YLhI/AAAAAAAAlfI/qdnalN0iV6M-WCWwb_kWt1zAgl0QmRcIQCLcBGAs/s1600/Restaurants%2BGraded%2BA%2Bby%2BType.png" alt="Type of Business" /></span></p>
+
+<p>As highlighted by the graph above, we could even refine the analysis as we notice that there is a significant variability in businesses’ sanitary conditions depending on their main source of activity more.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Type of Business</th>
+      <th>Count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Bakery</td>
+      <td>506</td>
+    </tr>
+    <tr>
+      <td>Bottled beverages, including water, sodas, juices, etc.</td>
+      <td>55</td>
+    </tr>
+    <tr>
+      <td>Coffee/Tea</td>
+      <td>1,236</td>
+    </tr>
+    <tr>
+      <td>Delicatessen</td>
+      <td>185</td>
+    </tr>
+    <tr>
+      <td>Donuts</td>
+      <td>488</td>
+    </tr>
+    <tr>
+      <td>Food</td>
+      <td>14,016</td>
+    </tr>
+    <tr>
+      <td>Ice Cream, Gelato, Yogurt, Ices</td>
+      <td>272</td>
+    </tr>
+    <tr>
+      <td>Juice, Smoothies, Fruit Salads</td>
+      <td>223</td>
+    </tr>
+    <tr>
+      <td>Other</td>
+      <td>149</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>While some categories only have a few businesses and may be too small to provide a very thorough picture, we can nonetheless infer relevant differences depending on the businesses’ sources of activity.</p>
+
+<h3 id="the-number-of-reviews-does-not-inform-much-on-inspection-scores">The Number of Reviews Does Not Inform Much on Inspection scores</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-UvIrOcuBZhc/XCYr0zsFHLI/AAAAAAAAlgo/XzzenToNTuIotZW1UO6h5EpDTPXqB-tkACLcBGAs/s1600/A%2Bby%2Blog%2Bof%2BReview%2BCount.pngg" alt="Proportion of Restaurants Graded A By Number of Reviews" /></span></p>
+
+<p>When adjusted for the scale, the number of reviews does not seem to indicate much with respect to the sanitary grade of a restaurant.</p>
+
+<h3 id="the-average-rating-on-yelp-is-uncorrelated-with-inspection-scores">The Average Rating on Yelp is Uncorrelated with Inspection Scores</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-CQrTaOlKR-0/XCYQIk_wetI/AAAAAAAAlgA/Tz71nHxvh0Iechu1HHipCGihDQHFvT9mACLcBGAs/s320/Score%2Bby%2BRating.png" alt="Proportion of Restaurants Graded A By Average Rating" /></span></p>
+
+<p>The average rating on Yelp seems for the most part uncorrelated with inspection results.</p>
+
+<h3 id="the-price-level-does-not-indicate-much">The Price Level Does Not Indicate Much</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://2.bp.blogspot.com/-THTbIIZ4pu0/XCYQIJDO8hI/AAAAAAAAlf8/JdP-eBYC-AgSvuUwyAr9lWOw0MwYx_pKgCLcBGAs/s1600/Proportion%2BA%2Bby%2BPrice.png" alt="Proportion of Restaurants Graded A By Price Point" /></span></p>
+
+<p>The Price level does not seem to indicate any relationship with sanitary conditions aside from the highest price point, where as expected, restaurants tend to have slightly better health grades.</p>
+
+<h3 id="hours-of-operations-are-mostly-irrelevant">Hours of Operations Are Mostly Irrelevant</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/-mDsw1ghHlvM/XCYQHkqDj_I/AAAAAAAAlfw/BspQvIatTWcf8S073UEiG7o61ZFU1TwggCLcBGAs/s1600/A%2Bby%2Bhours%2Bof%2Boperation.png" alt="Proportion of Restaurants Graded A By Hours of Operations" /></span></p>
+
+<p>Hours of operations do not seem to matter much as only the restaurants open overnight tend to have a lower likelihood of being graded A.</p>
+
+<h3 id="chain-size-is-positively-correlated-with-sanitary-conditions">Chain size is Positively Correlated with Sanitary Conditions</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://3.bp.blogspot.com/-d4JYvh9ju2Y/XCYQHpi82CI/AAAAAAAAlf4/q9QbVkjLksE_6R1POKbvse7zfImo9JwHgCLcBGAs/s320/A%2Bby%2Bchain%2Bsize.png" alt="Proportion of Restaurants Graded A By Chain Size" /></span></p>
+
+<p>As we had hypothesized, there appears to be some positive correlation between the chain size of the restaurant and the likelihood of the restaurant being rated A.</p>
+
+<h3 id="restaurants-sanitary-issues-tend-to-be-very-recurrent">Restaurants’ Sanitary Issues Tend to be Very Recurrent</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://2.bp.blogspot.com/-VPDJRCydfho/XCVZoAI6sqI/AAAAAAAAld0/iBHNhqD6AD005dQkJL3BXqjKh4hRML7RACLcBGAs/s320/A%2Bby%2Binspection%2Bcount.png" alt="Proportion of Restaurants Graded A By Inspection Count" /></span></p>
+
+<p>The more often a restaurant gets inspected, the less likely the business is to receive an “A” grade. The relationship seems to be much more signifcant as well.</p>
+
+<h2 id="guiding-policy-and-future-analysis-">Guiding Policy And Future Analysis <a name="part3"></a></h2>
+
+<h3 id="splitting-and-setting-up-our-dataset">Splitting and Setting Up our Dataset</h3>
+
+<p>We split our data 60/20/20 between the Training/Test/Validation set in order to create and test our models.</p>
+
+<p>We standardize the variable related to the size of the chain and the number of reviews.</p>
+
+<p>For the model, we keep the variables relating to the inspection count, the chain size, the type of cuisine, the price point, the neighborhood and whether the restaurant is open overnight.</p>
+
+<p>We set 1 to refer to the restaurant not being graded A and 0 for restaurants graded A.</p>
+
+<h3 id="a-logistic-regression-does-not-improve-the-model-much">A Logistic Regression Does Not Improve the Model Much</h3>
+
+<p><span style="display:block;text-align:center"><img src="https://3.bp.blogspot.com/-eozPCUeDsNY/XCYsyGh8UuI/AAAAAAAAlgw/xlVq1f775f4mb0r5eL3qEA8bJC0zPIYmgCLcBGAs/s320/Log_ROC.png" alt="Logistic Regression Test Set AUC Curve" /></span></p>
+
+<h3 id="a-random-forest-provides-with-the-best-results">A Random Forest Provides with the Best Results</h3>
+
+<p><span style="display:block;text-align:center"><strong>On the Test Set</strong></span></p>
+
+<p><img src="https://2.bp.blogspot.com/-D6xz9Fo6Z0Q/XCYsyMZUI9I/AAAAAAAAlg0/l9cz-EHztSw2QeQouc-zypNqDUFv_obxwCLcBGAs/s320/RF_test_ROC.png" alt="Random Forest Regression Test Set AUC Curve" />&lt;/span&gt;</p>
+
+<p><span style="display:block;text-align:center"><strong>On the Validation Set</strong></span></p>
+
+<p><img src="https://4.bp.blogspot.com/-yQlKW4Zu_Lg/XCYtVXVvOhI/AAAAAAAAlhA/NR3ZgKKvg8sHDCvePxY4g4UZac4cO8JsQCLcBGAs/s320/RF_validation_ROC.png" alt="Random Forest Regression Validation Set AUC Curve" />&lt;/span&gt;</p>
+
+<h3 id="potential-policy-implications">Potential Policy Implications</h3>
+
+<ul>
+  <li>As the model allows to predict sanitary issues more accurately the City could refine its inspections criteria and reduce the inspection frequency on the low-risk restaurants and focus on the businesses that yield higher risks. It could allow the city to greatly improve its ROI as the DOH could target more efficiently its inspections
+    <ul>
+      <li>For Instance, using a threshold of 0.001 on our model, we are able to correctly predict that <strong>~38-39%</strong> of the restaurants will be graded “A” while missing only <strong>~2-3%</strong> of the businesses that would have otherwise received a lower score.</li>
+      <li>Using a threhsold of 0.02 our model, we are able to correctly predict that <strong>~53-55%</strong> of the restaurants will be graded “A” while missing only <strong>~10-12%</strong> of the businesses that would have otherwise received a lower score.</li>
+    </ul>
+  </li>
+</ul>
+
+<p><span style="display:block;text-align:center"><img src="https://4.bp.blogspot.com/--g5DkETOU3w/XCZCAxBiRII/AAAAAAAAlhY/YOwKqg-MXSgTybstFeorEiDBe_VaX0s7wCLcBGAs/s320/precision-recall.png" alt="Random Forest Regression Test Set Precision Recall Curves" /></span></p>
+
+<ul>
+  <li>Aside from the predictive abilities of this model, we saw that restaurants’ sanitary conditions tend to be relatively “sticky”. as of now, the DOH reserves the right to close a restaurant for scores above 50 or to “to correct a public health hazard that cannot be corrected immediately or when a restaurant is operating without a valid permit”. However, many restaurants that have low grades (with scores below 50 but higher than 13) do not correct their scores easily and may need additional incentives/penalties. While the current inspection system pushes restaurants into correcting their sanitary conditions as they will be subject to inspections increasingly frequently (cf. image below), we could suggest alternative mechanisms to remedy better to this issue.
+    <ol>
+      <li>Restaurants could be forced to pay for Food Safety Consultants after a certain amount of inspections within a short period of time to be able to learn and adopt the right behaviors.</li>
+      <li>An additional penalty could be added after a certain amount of inspections in order to add a financial burden to restaurants that have not improved their sanitary behaviors and give them an additional incentives to change their habits.</li>
+    </ol>
+    <ul>
+      <li>Alternatively, restaurants could have to pay a fine that grows with the time they have spent below “A”.
+        <ol>
+          <li>Make mandatory the use of an external “taskforce” to resolve the sanitary issues after a certain number of inspections.</li>
+          <li>Restaurants could be forced to close if they have not been able to (re-)establish an A grade following a certain number of inspections.</li>
+        </ol>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p><span style="display:block;text-align:center"><img src="https://1.bp.blogspot.com/-m6OL9KyTegs/XCYwNlgflPI/AAAAAAAAlhM/NwgjCRQVdVQCWIvBi85b_jDmYjurfz0bgCLcBGAs/s320/grade%2Btable.PNG" alt="Inspection Schedule Depending on the Restaurant's Grade" /></span></p>
+
+<p><em>Graph as per the DOH official documentation available at (https://www1.nyc.gov/assets/doh/downloads/pdf/rii/inspection-cycle-overview.pdf)</em>&lt;/span&gt;</p>
+
+<h3 id="areas-for-future-research">Areas for Future Research</h3>
+
+<ul>
+  <li>
+    <p>Mapping the cost of an inspection and the potential revenue that could be derived from restaurants’ violations (https://www1.nyc.gov/assets/doh/downloads/pdf/rii/ri-violation-penalty.pdf) in order to set the threshold optimally to maximize revenues and set customized inspection timelines</p>
+  </li>
+  <li>
+    <p>Quantifying and optimizing the savings that could be made from the use of the new model in determining the timeframe for each inspections</p>
+  </li>
+  <li>
+    <p>While Yelp does not provide free access to the restaurants’ reviews, using NLP analysis on written reviews may allow to refine the analysis further and could provide significant improvement to the current model</p>
+  </li>
+  <li>
+    <p>Leveraging the Google Places API and additional datapoints on the restaurants such as the presence of a website, the volume of visits,etc. could provide additional insights</p>
+  </li>
+</ul>
