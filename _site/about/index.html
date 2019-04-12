@@ -18,7 +18,7 @@
   <h1 class="ml11">
         <span class="text-wrapper">
         <span class="line line1"></span>
-        <span class="letters"> I am Ilias Miraoui</span>
+        <span class="letters"> I am Ilias Miraoui and I like to build things</span>
         </span>
       </h1>
 
@@ -33,19 +33,19 @@
           scaleY: [0,1],
           opacity: [0.5,1],
           easing: "easeOutExpo",
-          duration: 600
+          duration: 800
         })
         .add({
           targets: '.ml11 .line',
           translateX: [0,$(".ml11 .letters").width()],
           easing: "easeOutExpo",
-          duration: 1000,
-          delay: 200
+          duration: 2000,
+          delay: 100
         }).add({
           targets: '.ml11 .letter',
           opacity: [0,1],
           easing: "easeOutExpo",
-          duration: 600,
+          duration: 1000,
           offset: '-=775',
           delay: function(el, i) {
             return 34 * (i+1)
@@ -74,7 +74,7 @@
   
   <footer>
    <ul>
-   <li><a href="mailto:ilias.miraoui@gmail.com">email</a></li>
+   <li><a href="mailto:ilias.miraoui@berkeley.edu">email</a></li>
    <li><a href="https://github.com/imiraoui">github.com/imiraoui</a></li>
    </ul>
   </footer>

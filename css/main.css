@@ -3,7 +3,7 @@ body { margin: 60px auto; width: 70%; }
 a { text-decoration: none; color: #15284B; }
 a:hover { text-decoration: underline; color: #FDB515 ; }
 ;
-p, ul { font-size: 1em; line-height: 1em; color:#15284B;  }
+p, ul { font-size: 1em; line-height: 1em; color:#15284B; display: inline;​ }
 
 h1, h2, h3, h4 { font-family: 'Helvetica', 'Arial', 'Sans-Serif'; color:#15284B;}
 h1 { font-size: 3em;  }
@@ -16,6 +16,8 @@ footer ul { font-size: 1em; font-family: 'Helvetica', 'Arial', 'Sans-Serif'; pad
 nav ul li, footer ul li { display: inline; margin-right: 20px; }
 
 footer { border-top: 1px solid #d5d5d5; font-size: .8em; }
+
+.img p { margin: 0 16px 16px 0; }
 
 .projects { border-top: 1px solid #d5d5d5;}
 .projects h1 { font-size: 3em; }
